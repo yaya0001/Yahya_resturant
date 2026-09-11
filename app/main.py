@@ -1,5 +1,18 @@
 from fastapi import FastAPI
-app=FastAPI(title="My FastAPI Application", description="This is a sample FastAPI application.", version="1.0.0")
-@app.get("/health")
+
+from app.core.config import settings
+
+
+app = FastAPI(
+    title=f"{settings.app_name} Multi-Agent API",
+    version="0.1.0",
+)
+
+
+@app.get("/")
 async def health_check():
-    return {"status": "healthy"}
+    return {
+        "status": "ok",
+        "service": settings.app_name.lower(),
+        "environment": settings.app_env,
+    }
