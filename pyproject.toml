@@ -16,7 +16,7 @@ dependencies = [
     "sqlalchemy",
     "psycopg[binary]",
     "alembic",
-    "pymongo"
+    "pymongo",
 ]
 
 [project.optional-dependencies]
@@ -24,7 +24,7 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "ruff",
-    "httpx2"
+    "httpx2",
 ]
 
 [tool.ruff]
