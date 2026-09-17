@@ -17,6 +17,10 @@ dependencies = [
     "psycopg[binary]",
     "alembic",
     "pymongo",
+    "langchain-community",
+    "langchain_huggingface",
+    "sentence-transformers",
+    "faiss-cpu",
 ]
 
 [project.optional-dependencies]
