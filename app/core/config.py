@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     mongodb_db: str = "novabite"
 
     faiss_index_path: str = "./faiss_index"
-
+    embedding_model_name: str = "findme"
+    GROQ_API_KEY: str = "YOUR_API_KEY"
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
