@@ -1,6 +1,6 @@
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
-
+from langchain_core.tools import tool
 from app.core.config import settings
 from app.RAG.retriever import get_retriever
 prompt = ChatPromptTemplate.from_messages([
@@ -48,9 +48,8 @@ class RAGAgent:
     def __init__(self, retriever, chain):
         self.retriever = retriever
         self.chain = chain
-
     def answer(self, question: str) -> str:
-
+        '''This tool answers questions about the restaurant's menu, prices, ingredients, opening hours, and policies using a RAG approach.'''
         docs = self.retriever.invoke(question)
 
         if not docs:
@@ -67,5 +66,8 @@ class RAGAgent:
         })
 
         return response.content
-ag= RAGAgent(retriever, chain)
-print(ag.answer("Do you serve sushi?"))
+@tool
+def answer(question: str) -> str:
+    '''This tool answers questions about the restaurant's menu, prices, ingredients, opening hours, and policies using a RAG approach.'''
+    agent=RAGAgent(retriever, chain)
+    return agent.answer(question)

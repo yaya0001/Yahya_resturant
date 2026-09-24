@@ -21,7 +21,9 @@ dependencies = [
     "langchain_huggingface",
     "sentence-transformers",
     "faiss-cpu",
-    "langchain_groq"
+    "langchain_groq",
+    "langgraph",
+    "IPython",
 ]
 
 [project.optional-dependencies]
