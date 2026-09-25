@@ -1,4 +1,5 @@
 from app.repositories.conversation_repo import ConversationRepository
+from langchain_core.messages import HumanMessage, AIMessage
 
 
 class MemoryService:
@@ -30,3 +31,25 @@ class MemoryService:
             role=role,
             content=content,
         )
+
+
+    def load_messages(conversation):
+        messages = []
+
+        for message in conversation["messages"]:
+
+            if message["role"] == "user":
+                messages.append(
+                    HumanMessage(
+                        content=message["content"]
+                    )
+                )
+
+            elif message["role"] == "assistant":
+                messages.append(
+                    AIMessage(
+                        content=message["content"]
+                    )
+                )
+
+        return messages

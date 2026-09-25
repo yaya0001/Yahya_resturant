@@ -15,6 +15,8 @@ llm=ChatGroq(model="openai/gpt-oss-120b",api_key=settings.GROQ_API_KEY).bind_too
 
 class Agent_state(TypedDict):
   messages: Annotated[Sequence[BaseMessage],add_messages]
+  conversation_id: str
+  user_id: str
 def model(state: Agent_state) -> Agent_state:
   """The brain"""
   sys_prompt=SystemMessage(content='''You are a helpful AI assistant for serving clients in Yahya_Restaurant.
@@ -32,7 +34,6 @@ When the client requests a multiple requests, execute each one in the order they
 
 After all requests are complete, provide the final answer.''')
   response=llm.invoke([sys_prompt]+state["messages"])
-  state["messages"].append(response)
   return {"messages":[response]}
 def decision(state:Agent_state) -> str:
   messages=state["messages"]

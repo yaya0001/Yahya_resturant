@@ -1,17 +1,14 @@
 from fastapi import FastAPI
 
-from app.core.config import settings
-
-app = FastAPI(
-    title=f"{settings.app_name} Multi-Agent API",
-    version="0.1.0",
-)
+from app.routes.auth import router as auth_router
 
 
-@app.get("/")
-async def health_check():
-    return {
-        "status": "ok",
-        "service": settings.app_name.lower(),
-        "environment": settings.app_env,
-    }
+app = FastAPI()
+
+
+app.include_router(auth_router)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}

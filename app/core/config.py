@@ -14,6 +14,9 @@ class Settings(BaseSettings):
 
     mongodb_uri: str = "mongodb://localhost:27017"
     mongodb_db: str = "novabite"
+    jwt_secret_key: str = "your-super-secret-key"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60
 
     faiss_index_path: str = "./faiss_index"
     embedding_model_name: str = "findme"
