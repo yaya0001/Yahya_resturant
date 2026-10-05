@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "your-super-secret-key"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60
+    enable_chat_graph: bool = False
 
     faiss_index_path: str = "./faiss_index"
     embedding_model_name: str = "findme"
