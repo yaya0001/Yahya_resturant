@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NovaBite API Tester</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #f4f6fb;
+        color: #1a1a1a;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 24px auto;
+        padding: 16px;
+      }
+      .panel {
+        background: white;
+        border: 1px solid #dfe6f1;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      }
+      h2, h3 { margin-top: 0; }
+      .forms {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+      input, button, textarea, select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid #ccd7ea;
+        font-size: 14px;
+        margin-top: 8px;
+      }
+      button {
+        background: #2563eb;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button.secondary {
+        background: #0f172a;
+      }
+      button.warning {
+        background: #dc2626;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .column {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 20px;
+      }
+      .conversation-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .conversation-list li {
+        padding: 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        background: #f8fafc;
+      }
+      .conversation-list li.active {
+        border-color: #2563eb;
+        background: #eff6ff;
+      }
+      .messages {
+        max-height: 420px;
+        overflow-y: auto;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .message {
+        padding: 8px 10px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+      }
+      .message.user {
+        background: #dbeafe;
+        margin-left: 30px;
+      }
+      .message.assistant {
+        background: #e2e8f0;
+        margin-right: 30px;
+      }
+      .label {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+      #status {
+        min-height: 24px;
+        color: #374151;
+        font-size: 14px;
+      }
+      .hidden { display: none; }
+      @media (max-width: 760px) {
+        .layout { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="panel">
+        <h2>NovaBite API Tester</h2>
+        <div id="status">Not authenticated</div>
+        <div class="forms">
+          <div>
+            <h3>Login</h3>
+            <div class="column">
+              <input id="login-email" type="email" placeholder="Email" value="test@example.com" />
+              <input id="login-password" type="password" placeholder="Password" value="password123" />
+              <button onclick="login()">Login</button>
+            </div>
+          </div>
+          <div>
+            <h3>Signup</h3>
+            <div class="column">
+              <input id="signup-name" type="text" placeholder="Name" value="Test User" />
+              <input id="signup-email" type="email" placeholder="Email" value="test@example.com" />
+              <input id="signup-password" type="password" placeholder="Password" value="password123" />
+              <button class="secondary" onclick="signup()">Signup</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="row">
+          <button onclick="createConversation()">Create conversation</button>
+          <button class="secondary" onclick="loadConversations()">Refresh conversations</button>
+          <button class="warning" onclick="deleteCurrentConversation()">Delete selected</button>
+        </div>
+      </div>
+
+      <div class="layout">
+        <div class="panel">
+          <h3>Conversations</h3>
+          <ul id="conversation-list" class="conversation-list"></ul>
+        </div>
+
+        <div class="panel">
+          <h3>Conversation</h3>
+          <div id="messages" class="messages"></div>
+          <div class="column" style="margin-top: 12px;">
+            <textarea id="message-input" rows="4" placeholder="Type your message..."></textarea>
+            <button onclick="sendMessage()">Send message</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const state = {
+        token: localStorage.getItem('token') || '',
+        activeConversationId: null,
+        conversations: []
+      };
+
+      function setStatus(text, isError = false) {
+        const el = document.getElementById('status');
+        el.textContent = text;
+        el.style.color = isError ? '#b91c1c' : '#374151';
+      }
+
+      function getHeaders(extra = {}) {
+        const headers = { ...extra };
+        if (state.token) {
+          headers.Authorization = `Bearer ${state.token}`;
+        }
+        return headers;
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(path, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...getHeaders(options.headers || {})
+          }
+        });
+
+        const text = await response.text();
+        let payload = text ? JSON.parse(text) : {};
+
+        if (!response.ok) {
+          const detail = payload.detail || payload.message || 'Request failed';
+          throw new Error(detail);
+        }
+
+        return payload;
+      }
+
+      async function login() {
+        try {
+          const payload = await api('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({
+              email: document.getElementById('login-email').value,
+              password: document.getElementById('login-password').value
+            })
+          });
+
+          state.token = payload.access_token;
+          localStorage.setItem('token', state.token);
+          setStatus('Logged in successfully');
+          await loadConversations();
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      }
+
+      async function signup() {
+        try {
+          const payload = await api('/auth/signup', {
+            method: 'POST',
+            body: JSON.stringify({
+              name: document.getElementById('signup-name').value,
+              email: document.getElementById('signup-email').value,
+              password: document.getElementById('signup-password').value
+            })
+          });
+
+          state.token = payload.access_token;
+          localStorage.setItem('token', state.token);
+          setStatus('Signup successful');
+          await loadConversations();
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      }
+
+      async function createConversation() {
+        if (!state.token) {
+          setStatus('Please login first', true);
+          return;
+        }
+
+        try {
+          const data = await api('/chat', {
+            method: 'POST',
+            body: JSON.stringify({})
+          });
+
+          state.activeConversationId = data.conversation_id;
+          await loadConversations();
+          await openConversation(data.conversation_id);
+          setStatus(`Conversation ${data.conversation_id} created`);
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      }
+
+      async function loadConversations() {
+        if (!state.token) {
+          document.getElementById('conversation-list').innerHTML = '<li>Please log in</li>';
+          return;
+        }
+
+        try {
+          const data = await api('/chat');
+          state.conversations = Array.isArray(data) ? data : [];
+          renderConversations();
+          if (!state.activeConversationId && state.conversations.length) {
+            state.activeConversationId = state.conversations[0].conversation_id;
+          }
+          if (state.activeConversationId) {
+            await openConversation(state.activeConversationId);
+          }
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      }
+
+      function renderConversations() {
+        const list = document.getElementById('conversation-list');
+
+        if (!state.conversations.length) {
+          list.innerHTML = '<li>No conversations yet</li>';
+          return;
+        }
+
+        list.innerHTML = state.conversations.map((c) => `
+          <li data-id="${c.conversation_id}" class="${c.conversation_id === state.activeConversationId ? 'active' : ''}">
+            <strong>${c.conversation_id}</strong><br>
+            <small>${new Date(c.updated_at || Date.now()).toLocaleString()}</small>
+          </li>
+        `).join('');
+
+        list.querySelectorAll('li[data-id]').forEach((item) => {
+          item.addEventListener('click', () => {
+            state.activeConversationId = item.dataset.id;
+            renderConversations();
+            openConversation(item.dataset.id);
+          });
+        });
+      }
+
+      async function openConversation(conversationId) {
+        if (!conversationId) return;
+
+        try {
+          const data = await api(`/chat/${conversationId}`);
+          state.activeConversationId = conversationId;
+          renderConversations();
+          const messagesEl = document.getElementById('messages');
+          const messages = data.messages || [];
+
+          if (!messages.length) {
+            messagesEl.innerHTML = '<div class="message assistant">No messages in this conversation yet.</div>';
+            return;
+          }
+
+          messagesEl.innerHTML = messages.map((message) => `
+            <div class="message ${message.role === 'user' ? 'user' : 'assistant'}">
+              <div class="label">${message.role}</div>
+              <div>${message.content}</div>
+            </div>
+          `).join('');
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      }
+
+      async function sendMessage() {
+        const message = document.getElementById('message-input').value.trim();
+        if (!message || !state.activeConversationId) {
+          setStatus('Choose a conversation and type a message', true);
+          return;
+        }
+
+        try {
+          const result = await api(`/chat/${state.activeConversationId}/message`, {
+            method: 'POST',
+            body: JSON.stringify({ message })
+          });
+
+          document.getElementById('message-input').value = '';
+          await openConversation(state.activeConversationId);
+          setStatus(`Message sent to ${state.activeConversationId}`);
+          console.log(result);
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      }
+
+      async function deleteCurrentConversation() {
+        if (!state.activeConversationId) {
+          setStatus('No conversation selected', true);
+          return;
+        }
+
+        try {
+          await api(`/chat/${state.activeConversationId}`, { method: 'DELETE' });
+          state.conversations = state.conversations.filter(
+            (c) => c.conversation_id !== state.activeConversationId
+          );
+          state.activeConversationId = state.conversations[0]?.conversation_id || null;
+          renderConversations();
+          const messagesEl = document.getElementById('messages');
+          messagesEl.innerHTML = '<div class="message assistant">Conversation deleted.</div>';
+          setStatus('Conversation deleted');
+        } catch (error) {
+          setStatus(error.message, true);
+        }
+      }
+
+      if (state.token) {
+        setStatus('Authenticated');
+        loadConversations();
+      }
+    </script>
+  </body>
+</html>

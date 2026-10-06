@@ -22,8 +22,6 @@ router = APIRouter(
 def get_chat_graph() -> Any:
     from app.core.config import settings
 
-    if not settings.enable_chat_graph:
-        return None
 
     if not settings.GROQ_API_KEY or settings.GROQ_API_KEY in {"", "YOUR_API_KEY"}:
         return None
