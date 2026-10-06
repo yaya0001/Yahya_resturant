@@ -42,10 +42,10 @@ def get_db():
         session.close()
 
 
-def get_current_user_id(
+def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     session: Session = Depends(get_db),
-) -> int:
+):
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -76,7 +76,13 @@ def get_current_user_id(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return user.id
+    return user
+
+
+def get_current_user_id(
+    current_user=Depends(get_current_user),
+) -> int:
+    return current_user.id
 
 
 @router.post("/login")
@@ -138,16 +144,11 @@ def signup(
 
 
 @router.get("/me")
-def get_current_user(
-    user_id: int = Depends(get_current_user_id),
-    session: Session = Depends(get_db),
+def get_me(
+    current_user=Depends(get_current_user),
 ):
-    user = UserRepository(session).get_by_id(user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
     return {
-        "id": user.id,
-        "name": user.name,
-        "email": user.mail,
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.mail,
     }

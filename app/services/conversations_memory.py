@@ -24,6 +24,17 @@ class MemoryService:
             user_id=user_id,
         )
 
+    def get_conversation_for_user(self, conversation_id: str, user_id: str):
+        conversation = self.get_conversation(conversation_id)
+
+        if conversation is None:
+            raise LookupError(f"Conversation {conversation_id} not found")
+
+        if str(conversation.get("user_id")) != str(user_id):
+            raise PermissionError("You do not have access to this conversation")
+
+        return conversation
+
     def create_conversation(
         self,
         conversation_id: str,
@@ -83,14 +94,24 @@ class MemoryService:
         conversation = self.repository.get_conversation(conversation_id)
 
         if conversation is None:
-            if user_id is not None:
-                self.create_conversation(
-                    conversation_id=conversation_id,
-                    user_id=user_id,
-                )
-            return []
+            raise LookupError(f"Conversation {conversation_id} not found")
+
+        if user_id is not None and str(conversation.get("user_id")) != str(user_id):
+            raise PermissionError("You do not have access to this conversation")
 
         return self.dict_to_messages(conversation.get("messages", []))
+
+    def get_user_conversations(self, user_id: str):
+        conversations = self.repository.get_conversations_for_user(user_id)
+        return [
+            {
+                "conversation_id": conversation.get("conversation_id"),
+                "user_id": conversation.get("user_id"),
+                "updated_at": conversation.get("updated_at"),
+                "messages": conversation.get("messages", []),
+            }
+            for conversation in conversations
+        ]
 
     def save_message(
         self,

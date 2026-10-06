@@ -10,6 +10,12 @@ class ConversationRepository:
             {"conversation_id": conversation_id}
         )
 
+    def get_conversations_for_user(self, user_id: str):
+        return list(
+            conversations_collection.find({"user_id": str(user_id)})
+            .sort("updated_at", -1)
+        )
+
     def create_conversation(
         self,
         conversation_id: str,
@@ -17,7 +23,7 @@ class ConversationRepository:
     ):
         document = {
             "conversation_id": conversation_id,
-            "user_id": user_id,
+            "user_id": str(user_id),
             "messages": [],
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc),
@@ -48,3 +54,7 @@ class ConversationRepository:
                 },
             },
         )
+
+    def delete_conversation(self, conversation_id: str):
+        result = conversations_collection.delete_one({"conversation_id": conversation_id})
+        return result.deleted_count > 0

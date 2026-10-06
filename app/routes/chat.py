@@ -4,32 +4,19 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.repositories.conversation_repo import ConversationRepository
+from app.routes.auth import get_current_user
 from app.services.chat_service import ChatService
 from app.services.conversations_memory import MemoryService
 
 
 class ChatMessageRequest(BaseModel):
-    conversation_id: str
     message: str
-    user_id: str | None = None
 
 
 router = APIRouter(
     prefix="/chat",
     tags=["Chat"],
 )
-
-
-@router.get("", include_in_schema=False)
-@router.get("/", include_in_schema=False)
-def chat_root():
-    return {
-        "message": "Chat endpoints",
-        "endpoints": [
-            "/chat/message",
-            "/chat/history/{conversation_id}",
-        ],
-    }
 
 
 def get_chat_graph() -> Any:
@@ -54,44 +41,82 @@ def get_chat_service(graph: Any = Depends(get_chat_graph)) -> ChatService:
     return ChatService(memory_service=memory_service, graph=graph)
 
 
-@router.post("/message")
-def send_message(
-    payload: ChatMessageRequest,
+@router.post("", status_code=status.HTTP_201_CREATED)
+def create_conversation(
+    current_user=Depends(get_current_user),
     service: ChatService = Depends(get_chat_service),
 ):
-    user_id = payload.user_id or "anonymous"
+    conversation_id = service.create_conversation(str(current_user.id))
+    return {"conversation_id": conversation_id}
 
-    response = service.chat(
-        conversation_id=payload.conversation_id,
-        user_id=user_id,
-        message=payload.message,
-    )
+
+@router.get("")
+def list_conversations(
+    current_user=Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    conversations = service.list_conversations(str(current_user.id))
+    return [
+        {
+            "conversation_id": conversation["conversation_id"],
+            "updated_at": conversation.get("updated_at"),
+            "messages": conversation.get("messages", []),
+        }
+        for conversation in conversations
+    ]
+
+
+@router.get("/{conversation_id}")
+def get_history(
+    conversation_id: str,
+    current_user=Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    try:
+        history = service.get_history(conversation_id, str(current_user.id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Conversation not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail="Forbidden") from exc
+
+    return history
+
+
+@router.post("/{conversation_id}/message")
+def send_message(
+    conversation_id: str,
+    payload: ChatMessageRequest,
+    current_user=Depends(get_current_user),
+    service: ChatService = Depends(get_chat_service),
+):
+    try:
+        response = service.chat(
+            conversation_id=conversation_id,
+            user_id=str(current_user.id),
+            message=payload.message,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Conversation not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail="Forbidden") from exc
 
     return {
-        "conversation_id": payload.conversation_id,
-        "user_id": user_id,
+        "conversation_id": conversation_id,
         "response": response,
     }
 
 
-@router.get("/history/{conversation_id}")
-def get_history(
+@router.delete("/{conversation_id}")
+def delete_conversation(
     conversation_id: str,
+    current_user=Depends(get_current_user),
     service: ChatService = Depends(get_chat_service),
 ):
-    memory_service = service.memory_service
     try:
-        history = memory_service.get_messages(conversation_id)
-    except Exception:
-        history = []
+        deleted = service.delete_conversation(conversation_id, str(current_user.id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="Conversation not found") from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail="Forbidden") from exc
 
-    return {
-        "conversation_id": conversation_id,
-        "messages": [
-            {
-                "role": message.type,
-                "content": message.content,
-            }
-            for message in history
-        ],
-    }
+    return {"deleted": deleted, "conversation_id": conversation_id}
