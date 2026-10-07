@@ -1,4 +1,7 @@
+from typing import Annotated
+
 from langchain_core.tools import tool
+from langgraph.prebuilt import InjectedState
 
 from app.database.postgres import SessionLocal
 from app.repositories.booking_repository import BookingRepository
@@ -35,10 +38,11 @@ def book_table(
     date: datetime,
     branch: str,
     table_id: int,
-    user: int,
+    user_id: Annotated[str, InjectedState("user_id")],
 ) -> dict:
     """
     Book a restaurant table for a specific date, time, and branch.
+    The authenticated user ID is provided by the chat state.
     """
 
     session = SessionLocal()
@@ -52,7 +56,7 @@ def book_table(
             date=date,
             branch=branch,
             table_id=table_id,
-            user=user
+            user=int(user_id),
         )
 
     finally:
