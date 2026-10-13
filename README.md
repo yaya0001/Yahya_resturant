@@ -55,8 +55,7 @@ README.md
 Before running the project, make sure you have:
 
 - Python 3.12
-- PostgreSQL installed and running
-- MongoDB installed and running
+- Docker Engine and Docker Compose
 - A valid Groq API key for AI-backed agents
 
 ## Local Setup
@@ -135,6 +134,34 @@ The application will be available at:
 
 - http://127.0.0.1:8000
 - Health check: http://127.0.0.1:8000/health
+
+### Run all services with Docker Compose
+
+Copy `.env.example` to `.env`, then replace the placeholder database password,
+JWT secret, and Groq API key. Start the API and both databases:
+
+```bash
+cp .env.example .env
+docker compose up -d
+```
+
+Compose pulls the API image from Docker Hub and the PostgreSQL and MongoDB
+images from Docker Hub. The API is available at http://127.0.0.1:8000. The
+databases are reachable inside the Compose network at `postgres:5432` and
+`mongodb:27017`; their ports are not published to the host. Data persists in
+named Docker volumes. Stop the services without deleting data with
+`docker compose down`.
+
+Before sharing this Compose setup, publish the API image to the configured
+Docker Hub repository:
+
+```bash
+docker build -t yaya0001/yahya-restaurant:latest .
+docker push yaya0001/yahya-restaurant:latest
+```
+
+Share the Compose file and `.env.example`, never your actual `.env` file or its
+secrets. Each user creates their own `.env` before starting the stack.
 
 ## Database Setup
 

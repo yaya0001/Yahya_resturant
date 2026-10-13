@@ -6,13 +6,13 @@ class Settings(BaseSettings):
     app_env: str = "development"
     debug: bool = True
 
-    postgres_host: str = "localhost"
+    postgres_host: str = "postgres"
     postgres_port: int = 5432
     postgres_db: str = "novabite"
     postgres_user: str = "novabite"
     postgres_password: str = "change_me"
 
-    mongodb_uri: str = "mongodb://localhost:27017"
+    mongodb_uri: str = "mongodb://mongodb:27017"
     mongodb_db: str = "novabite"
     jwt_secret_key: str = "your-super-secret-key"
     jwt_algorithm: str = "HS256"
